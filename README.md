@@ -30,6 +30,12 @@ notes* checkbox would — the `set_notes_private` permission.
 one-liner opens the full editor and attaches it, inserting the inline image
 markup exactly as core does.
 
+The **Quote** button on an existing note also lands here instead of reopening the
+issue edit form. Whatever was already being written is kept and the quote is
+appended after it, and quoting a private note keeps the reply private. If the
+issue edit form happens to be open already, quoting is left alone — you are
+editing the issue, so the quote stays where you are looking.
+
 ## Why it cannot cause an edit conflict
 
 The form submits **only** `issue[notes]` (plus `issue[private_notes]` where
@@ -38,10 +44,24 @@ note can never fail with `ActiveRecord::StaleObjectError` because somebody else
 touched the issue meanwhile — which is the actual complaint in #3143. Core itself
 does the same thing in its `conflict_resolution` handling.
 
-Nothing is monkey-patched. There is no new controller, route, model, migration or
-permission: `notes` is guarded by `notes_addable?` in `Issue#safe_attributes`
-while `subject`, `description` and `lock_version` sit behind
-`attributes_editable?`, so core refuses anything this form does not send.
+No Ruby is monkey-patched, and there is no new controller, route, model,
+migration or permission: `notes` is guarded by `notes_addable?` in
+`Issue#safe_attributes` while `subject`, `description` and `lock_version` sit
+behind `attributes_editable?`, so core refuses anything this form does not send.
+
+## The one wrapped function
+
+Redirecting the **Quote** button needs a single client-side wrapper, around
+`showAndScrollTo`. Core's quote button posts to `journals#new` and the response
+script — `app/views/journals/new.js.erb` — reveals the edit form and writes into
+`#issue_notes`. That view has no hook and the quote block is built server-side,
+so there is nothing else to intercept.
+
+The wrapper only acts on `showAndScrollTo("add_notes")`, which nothing else on
+the issue page passes (the Edit link passes `"update"`); everything else is
+delegated to the original untouched. If a future Redmine stops calling it, the
+wrapper never fires and quoting falls back to core's own behaviour rather than
+breaking.
 
 ## Permissions
 

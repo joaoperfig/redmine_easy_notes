@@ -142,6 +142,97 @@
       collapse();
     });
 
+    /* --- quoting an existing note ------------------------------------------
+       Core's quote button is a Stimulus action posting to journals#new, and the
+       response script (app/views/journals/new.js.erb) does:
+
+         $('#update').show(); showAndScrollTo("add_notes");
+         var notes = $('#issue_notes').val(); if (notes > "") { notes = notes + "\n\n" }
+         $('#issue_notes').blur().focus().val(notes + <quote>);
+         [ $('#issue_private_notes').prop('checked', true); ]
+
+       so by default quoting reopens the whole issue edit form. That view has no
+       hook, and the quote block is built server-side, so the only interception
+       point is showAndScrollTo. "add_notes" is passed by nothing else on this
+       page -- the Edit link passes "update" -- which makes the test safe.
+
+       If core ever stops calling showAndScrollTo("add_notes"), none of this
+       fires and quoting simply falls back to core's own behaviour. */
+
+    var $coreUpdate  = $('#update');
+    var $coreNotes   = $('#issue_notes');
+    var $corePrivate = $('#issue_private_notes');
+    var coreShowAndScrollTo = window.showAndScrollTo;
+
+    // If the user already had core's edit form open, they are editing the issue
+    // and quoting should stay where they are looking. Recorded at click time
+    // because the response script shows #update before showAndScrollTo runs, so
+    // by then it is too late to tell. Stimulus is bound to the link itself and
+    // only starts an async POST, so this delegated handler still sees the
+    // pre-request state.
+    var coreFormWasOpen = false;
+    $(document).on('click', '[data-action*="quote-reply#quote"]', function () {
+      coreFormWasOpen = $coreUpdate.length ? $coreUpdate.is(':visible') : false;
+    });
+
+    function adoptQuote(previousNotes, wasPrivate) {
+      var written = $coreNotes.val();
+      var quote = written;
+
+      // The response appends to whatever core's textarea held, so take that
+      // prefix -- and the "\n\n" separator core adds -- back off.
+      if (previousNotes && written.indexOf(previousNotes) === 0) {
+        quote = written.slice(previousNotes.length);
+      }
+      quote = quote.replace(/^\s*\n/, '');
+
+      var nowPrivate = $corePrivate.length ? $corePrivate.prop('checked') : false;
+
+      // Leave core's form exactly as it was; it is not the editor in use.
+      $coreNotes.val(previousNotes);
+      if ($corePrivate.length) { $corePrivate.prop('checked', wasPrivate); }
+
+      if ($.trim(quote).length === 0) { return; }
+
+      // Keep whatever was already being written. expand() carries the one-liner
+      // across under the usual rule, so this covers text in either editor.
+      expand(true);
+
+      var existing = $textarea.val();
+      if ($.trim(existing).length) {
+        $textarea.val(existing.replace(/\s*$/, '') + '\n\n' + quote);
+      } else {
+        $textarea.val(quote);
+      }
+
+      // Quoting a private note keeps the reply private. Core only ever turns
+      // this on, so this never silently makes a note public.
+      if (nowPrivate && !wasPrivate) { setPrivate(true); }
+
+      var el = $textarea.get(0);
+      $textarea.trigger('focus');
+      if (el.setSelectionRange) {
+        el.setSelectionRange(el.value.length, el.value.length);
+      }
+      if ($wrap.get(0).scrollIntoView) {
+        $wrap.get(0).scrollIntoView({ behavior: 'instant', block: 'center' });
+      }
+    }
+
+    if (typeof coreShowAndScrollTo === 'function' && $coreNotes.length) {
+      window.showAndScrollTo = function (id, focus) {
+        if (id === 'add_notes' && !coreFormWasOpen) {
+          var previousNotes = $coreNotes.val();
+          var wasPrivate = $corePrivate.length ? $corePrivate.prop('checked') : false;
+          // Hide core's form again in the same tick, so it never paints.
+          $coreUpdate.hide();
+          setTimeout(function () { adoptQuote(previousNotes, wasPrivate); }, 0);
+          return;
+        }
+        return coreShowAndScrollTo.apply(this, arguments);
+      };
+    }
+
     // Enter in the one-liner submits; the button lives outside the form (it uses
     // the form= attribute) so the browser will not do this for us.
     $input.on('keydown', function (e) {
