@@ -1,0 +1,97 @@
+<%# Quick "add note" bar. Rendered on issues/show only, and only for users who may
+    actually add a note -- notes_addable? is the add_issue_notes permission. %>
+<% if @issue && !@issue.new_record? && @issue.notes_addable? %>
+  <%= stylesheet_link_tag 'easy_notes', plugin: 'redmine_easy_notes' %>
+
+  <div id="easy-notes" class="journal" style="display:none;">
+
+    <%# --- collapsed state: the one-line bar ------------------------------------- %>
+    <div class="note" id="easy-notes-mini">
+      <h4 class="journal-header">
+        <span class="journal-info">
+          <label class="hidden-for-sighted" for="easy-notes-input"><%= l(:field_notes) %></label>
+          <input type="text" id="easy-notes-input" class="easy-notes-input"
+                 placeholder="<%= l(:label_easy_notes_placeholder) %>"
+                 autocomplete="off">
+        </span>
+        <span class="journal-meta">
+          <span class="journal-actions">
+            <%= link_to sprite_icon('issue-edit', l(:button_easy_notes_full_editor), icon_only: true),
+                        '#',
+                        id: 'easy-notes-expand',
+                        title: l(:button_easy_notes_full_editor),
+                        class: 'icon-only icon-issue-edit' %>
+          </span>
+          <% if @issue.safe_attribute?('private_notes') %>
+            <%# Public/private toggle. Mirrors, and stays in sync with, the
+                issue[private_notes] checkbox in the full editor below. %>
+            <a href="#" id="easy-notes-private-toggle" class="icon-only"
+               title="<%= l(:label_easy_notes_public_note) %>"
+               role="button" aria-pressed="false"
+               data-label-public="<%= l(:label_easy_notes_public_note) %>"
+               data-label-private="<%= l(:label_easy_notes_private_note) %>">
+              <%= sprite_icon('spy-off', css_class: 'easy-notes-spy-off', plugin: 'redmine_easy_notes') %>
+              <%= sprite_icon('spy', css_class: 'easy-notes-spy', plugin: 'redmine_easy_notes') %>
+            </a>
+          <% end %>
+          <%# An <input type=submit>, not a <button type=submit>: themes reliably
+              style input[type=submit] and often miss the button form, so a button
+              silently loses the theme's colours and hover.
+
+              Rendered disabled because the field starts empty; easy_notes.js
+              enables it as soon as there is something to submit. The whole bar
+              is JavaScript-driven anyway (it is moved into #history, and
+              expand/collapse is scripted), so there is no working no-JS state
+              this could take away. %>
+          <%= submit_tag l(:button_easy_notes_add), form: 'easy-notes-form',
+                         name: 'commit', id: 'easy-notes-mini-submit',
+                         disabled: true %>
+        </span>
+      </h4>
+    </div>
+
+    <%# --- expanded state: the full editor --------------------------------------- %>
+    <%# Only issue[notes] (and optionally issue[private_notes]) is submitted, to the
+        stock PATCH /issues/:id. Two consequences, both wanted:
+          * lock_version is NOT sent, so adding a note can never raise
+            ActiveRecord::StaleObjectError -- the complaint in Redmine feature #3143.
+          * 'notes' is guarded by notes_addable? in Issue#safe_attributes while
+            subject/description/lock_version sit behind attributes_editable?, so core
+            itself refuses anything this form does not send. %>
+    <div class="note" id="easy-notes-full" style="display:none;">
+      <%= form_tag issue_path(@issue), method: :patch, multipart: true, id: 'easy-notes-form' do %>
+        <div class="box">
+          <label class="hidden-for-sighted" for="easy-notes-textarea"><%= l(:field_notes) %></label>
+          <%= textarea_tag 'issue[notes]', '',
+                           id: 'easy-notes-textarea',
+                           class: 'wiki-edit',
+                           rows: 14,
+                           data: { auto_complete: true }.merge(wiki_textarea_stimulus_attributes) %>
+
+          <% if @issue.safe_attribute?('private_notes') %>
+            <%= hidden_field_tag 'issue[private_notes]', '0', id: nil %>
+            <%= check_box_tag 'issue[private_notes]', '1', false, id: 'easy-notes-private' %>
+            <label for="easy-notes-private"><%= l(:field_private_notes) %></label>
+          <% end %>
+
+          <% if @issue.attachments_addable? %>
+            <span class="easy-notes-attachments">
+              <%= render partial: 'attachments/form', locals: { container: @issue } %>
+            </span>
+          <% end %>
+        </div>
+
+        <p>
+          <%= submit_tag l(:button_easy_notes_add), name: 'commit' %>
+          <%= link_to l(:button_cancel), '#', id: 'easy-notes-cancel' %>
+        </p>
+      <% end %>
+    </div>
+  </div>
+
+  <%# Draws the jstoolbar onto the textarea and pulls in the formatter's js/css.
+      Safe while #easy-notes-full is hidden -- jsToolBar only manipulates the DOM. %>
+  <%= wikitoolbar_for 'easy-notes-textarea', preview_issue_path(project_id: @project, issue_id: @issue) %>
+
+  <%= javascript_include_tag 'easy_notes', plugin: 'redmine_easy_notes' %>
+<% end %>

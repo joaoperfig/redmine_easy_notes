@@ -1,0 +1,85 @@
+/* Redmine Easy Notes.
+   --oc-* are open-color custom properties from core; the literal fallbacks matter
+   because a theme that replaces core's application.css can drop the open-color
+   import, leaving every --oc-* undefined. */
+
+#easy-notes .journal-info {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin-inline-end: 10px;
+}
+
+#easy-notes input.easy-notes-input {
+  width: 100%;
+  box-sizing: border-box;
+  background-color: #fff;
+  border: 1px solid var(--oc-gray-4, #ced4da);
+  border-radius: 3px;
+  padding: 4px 6px;
+  margin: 0;
+  font-family: inherit;
+  font-size: 1em;
+}
+
+#easy-notes input.easy-notes-input::placeholder {
+  color: var(--oc-gray-5, #adb5bd);
+  opacity: 1;
+}
+
+#easy-notes .journal-meta {
+  flex: 0 0 auto;
+  align-items: center;
+}
+
+#easy-notes-mini.fileover input.easy-notes-input {
+  border-color: var(--oc-blue-5, #339af0);
+  background-color: var(--oc-blue-0, #e7f5ff);
+}
+
+/* Add Note is disabled while the one-liner is empty. Redmine already styles
+   `input:disabled` (grey background, graytext, not-allowed) and, having equal
+   specificity to `input[type=submit]`, wins on source order in both core and
+   the bundled themes -- so the colours are deliberately left to the theme.
+   These two properties are only a portability guard, for a theme that happens
+   to declare its submit styling after its disabled styling. */
+#easy-notes-mini-submit:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+#easy-notes-full .box {
+  margin-block-end: 0;
+}
+
+#easy-notes-full p {
+  padding-inline-start: 8px;
+}
+
+/* --- public / private toggle -------------------------------------------------
+   Both icons are rendered and one is hidden, rather than rewriting the <use>
+   href, because the href carries the asset digest. Note that core has
+   `.icon-only span { display: none }`, so the icons must not be wrapped in
+   spans -- they are distinguished by a css_class on the svg itself. */
+
+#easy-notes-private-toggle svg.easy-notes-spy {
+  display: none;
+}
+
+#easy-notes-private-toggle.private svg.easy-notes-spy-off {
+  display: none;
+}
+
+#easy-notes-private-toggle.private svg.easy-notes-spy {
+  display: inline;
+}
+
+/* When private, the icon takes the colour a native checked checkbox paints its
+   interior with. easy_notes.js resolves --easy-notes-private-color from the
+   computed accent-color of the real private-notes checkbox, so a theme that sets
+   accent-color is followed automatically; AccentColor is the fallback, and a
+   theme can also just override the property. The id keeps this ahead of core's
+   `a.icon-only:hover .icon-svg` without !important. */
+#easy-notes-private-toggle.private svg.icon-svg,
+#easy-notes-private-toggle.private:hover svg.icon-svg {
+  stroke: var(--easy-notes-private-color, AccentColor);
+}

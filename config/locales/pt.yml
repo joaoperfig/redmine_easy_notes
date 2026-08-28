@@ -1,0 +1,6 @@
+pt:
+  label_easy_notes_placeholder: "Adicione a sua nota"
+  button_easy_notes_add: "Adicionar Nota"
+  button_easy_notes_full_editor: "Abrir editor completo"
+  label_easy_notes_public_note: "Nota Pública"
+  label_easy_notes_private_note: "Nota Privada"
