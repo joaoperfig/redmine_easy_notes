@@ -46,33 +46,6 @@ There is one note being composed at a time, and one of the two editors is
 showing it. Switching hands the text over instead of leaving a copy behind, so
 the two boxes cannot drift apart and show different things.
 
-## Why it cannot cause an edit conflict
-
-The form submits only `issue[notes]`, plus `issue[private_notes]` where
-permitted, to the stock `PATCH /issues/:id`. It never sends `lock_version`, so a
-note cannot fail with `ActiveRecord::StaleObjectError` because somebody else
-touched the issue meanwhile. That is the actual complaint in #3143, and core does
-the same thing in its own `conflict_resolution` handling.
-
-No Ruby is monkey-patched. There is no new controller, route, model, migration or
-permission. `Issue#safe_attributes` guards `notes` with `notes_addable?`, while
-`subject`, `description` and `lock_version` sit behind `attributes_editable?`, so
-core itself refuses anything this form does not send.
-
-## The one wrapped function
-
-Sending the Quote button here needs a single client-side wrapper, around
-`showAndScrollTo`. Core's quote button posts to `journals#new`, and the response
-script (`app/views/journals/new.js.erb`) reveals the edit form and writes into
-`#issue_notes`. That view has no hook, and the quote block is built server-side,
-so there is nothing else to intercept.
-
-The wrapper acts only on `showAndScrollTo("add_notes")`, which nothing else on
-the issue page passes; the Edit link passes `"update"`. Every other call is
-delegated to the original function untouched. If a future Redmine stops calling
-it, the wrapper never fires and quoting falls back to core's behaviour rather
-than breaking.
-
 ## Permissions
 
 The bar renders only when `@issue.notes_addable?`, which is the "Add notes"
