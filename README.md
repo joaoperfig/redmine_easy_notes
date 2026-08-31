@@ -3,6 +3,8 @@
 Adds a one-line "Add note" box under the issue history, so leaving a comment does
 not mean opening the whole issue edit form.
 
+![The one-line note bar under the issue history: an "Add your note" field, an icon to open the full editor, a public/private toggle, and an "Add Note" button](doc/mini-editor.png)
+
 Redmine has no way to add a note without revealing the full editor, which also
 exposes the subject, description and every other attribute. That makes it easy to
 change the issue by accident on the way to commenting. See
@@ -20,6 +22,10 @@ A bar styled like a journal entry appears below the notes. It contains:
 * a public/private toggle: a `spy-off` icon labelled "Public Note" that flips to
   `spy` labelled "Private Note", coloured like a checked checkbox
 * an "Add Note" button, disabled until the field has something in it
+
+One click on the icon, or Shift+Enter, swaps the bar for the full editor:
+
+![The full editor in place of the bar: jstoolbar with Edit and Preview tabs, a large text area, a "Private notes" checkbox, a file picker, and "Add Note" and "Cancel" underneath](doc/full-editor.png)
 
 ## Keys and behaviour
 
