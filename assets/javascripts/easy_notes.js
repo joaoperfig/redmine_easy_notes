@@ -233,13 +233,30 @@
       };
     }
 
-    // Enter in the one-liner submits; the button lives outside the form (it uses
-    // the form= attribute) so the browser will not do this for us.
+    /* Enter in the one-liner submits. The button lives outside the form (it uses
+       the form= attribute) so the browser will not do this for us.
+
+       Shift+Enter means "this is going to be more than one line", so it moves to
+       the full editor instead of submitting. The one-liner is an <input>, which
+       cannot hold a line break, so nothing is inserted natively and both keys
+       arrive here as keyCode 13. */
     $input.on('keydown', function (e) {
-      if (e.which === 13) {
-        e.preventDefault();
-        $form.trigger('submit');
+      if (e.which !== 13) { return; }
+      e.preventDefault();
+
+      if (e.shiftKey) {
+        expand(true);
+        var el = $textarea.get(0);
+        // Add the line break the user asked for, but not a leading blank line
+        // when there was nothing typed yet.
+        if (el.value.length) { $textarea.val(el.value + '\n'); }
+        if (el.setSelectionRange) {
+          el.setSelectionRange(el.value.length, el.value.length);
+        }
+        return;
       }
+
+      $form.trigger('submit');
     });
 
     $form.on('submit', function (e) {
