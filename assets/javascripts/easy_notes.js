@@ -108,10 +108,14 @@
       });
     }
 
+    /* There is one note being composed and one of the two editors is showing it,
+       so switching hands the text over rather than leaving a copy behind. Only
+       the editor being switched *away from* is a source: if the full editor is
+       already open it owns the text, and the one-liner must not overwrite it
+       (that matters for quoting into an existing draft). */
+
     function expand(carryText) {
-      // Carry the one-liner over, but never clobber text the user already typed
-      // in the full editor and then cancelled out of.
-      if (carryText && $input.val().length && $textarea.val().length === 0) {
+      if (carryText && $full.is(':hidden')) {
         $textarea.val($input.val());
       }
       // Carry the toggle state onto the checkbox.
@@ -124,10 +128,16 @@
     }
 
     function collapse() {
-      // Deliberately does NOT copy back into the one-liner.
+      // Cancel discards the note being composed, so both editors are cleared.
+      // Leaving the text behind is what made the two boxes drift apart, with the
+      // stale one silently winning the next time the editor was opened.
+      $textarea.val('');
+      $input.val('');
       $full.hide();
       $mini.show();
-      // The one-liner may have been emptied since the button was last enabled.
+      // The private toggle is deliberately NOT reset: it is visible on the bar,
+      // and quietly flipping a note back to public is the one mistake here with
+      // a real consequence.
       syncMiniSubmit();
       $input.trigger('focus');
     }

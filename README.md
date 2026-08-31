@@ -27,7 +27,7 @@ A bar styled like a journal entry appears below the notes. It contains:
 |---|---|
 | Enter | Submits the note |
 | Shift+Enter | Opens the full editor, keeping the text and adding the line break |
-| Cancel in the full editor | Returns to the one-liner |
+| Cancel in the full editor | Discards the note and returns to the one-liner, both boxes empty |
 | Drop a file on the one-liner | Opens the full editor, attaches the file and inserts the inline image markup, exactly as core does |
 | Quote on an existing note | Lands in this editor instead of reopening the issue edit form |
 
@@ -38,7 +38,13 @@ the quote stays where you are looking.
 
 The toggle and the full editor's "Private notes" checkbox are two views of one
 value and stay in sync both ways, so the bar cannot claim a note is public while
-the checkbox disagrees.
+the checkbox disagrees. Cancel does not reset it: the toggle is visible on the
+bar, and quietly flipping a note back to public is the one mistake here with a
+real consequence.
+
+There is one note being composed at a time, and one of the two editors is
+showing it. Switching hands the text over instead of leaving a copy behind, so
+the two boxes cannot drift apart and show different things.
 
 ## Why it cannot cause an edit conflict
 
