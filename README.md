@@ -52,6 +52,29 @@ There is one note being composed at a time, and one of the two editors is
 showing it. Switching hands the text over instead of leaving a copy behind, so
 the two boxes cannot drift apart and show different things.
 
+## Switching it on per project
+
+It is a project module, so it is off until someone turns it on. Go to
+**Project settings, Modules**, tick **Easy notes**, save.
+
+Where the module is off, the issue page is exactly the stock page: no bar, no
+stylesheet, no script, and core's own Quote behaviour. Nothing about the page
+changes.
+
+Two consequences worth knowing:
+
+* After installing, no project has it on, including existing ones. Tick the
+  projects you want.
+* New projects get it only if you add it to
+  **Administration, Settings, Projects, Default enabled modules**.
+
+To turn it on everywhere at once:
+
+```ruby
+# RAILS_ENV=production bin/rails runner
+Project.find_each { |p| p.enabled_module_names |= ['easy_notes'] }
+```
+
 ## Permissions
 
 The bar renders only when `@issue.notes_addable?`, which is the "Add notes"
@@ -59,11 +82,17 @@ The bar renders only when `@issue.notes_addable?`, which is the "Add notes"
 `set_notes_private`. The attachment field appears only when
 `attachments_addable?`.
 
+Registering a project module requires naming at least one permission, so there
+is a marker permission, `view_easy_notes`. It is declared public, which keeps it
+out of the role form entirely, so no role gains or loses anything and there is
+nothing to re-tick after installing. Nothing is ever checked against it; the
+real gates are the module and the core permissions above.
+
 ## Requirements
 
 Redmine 7.0.0 or later. The markup mirrors Redmine 7's journal header
 (`sprite_icon`, flex `.journal-header`, `textarea_tag`), so earlier versions are
-untested. No gems, no migrations.
+untested. No gems, no migrations, no controllers, no routes.
 
 ## Install
 

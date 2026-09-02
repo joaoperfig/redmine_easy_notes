@@ -1,6 +1,13 @@
-<%# Quick "add note" bar. Rendered on issues/show only, and only for users who may
-    actually add a note -- notes_addable? is the add_issue_notes permission. %>
-<% if @issue && !@issue.new_record? && @issue.notes_addable? %>
+<%# Quick "add note" bar. Rendered on issues/show only, and only when:
+      * the project has the Easy notes module switched on, and
+      * the user may add a note (notes_addable? is the add_issue_notes permission).
+
+    The module check gates the whole partial, stylesheet and script included, so
+    a project with it off gets the stock issue page: no markup, no assets, and
+    core's own Quote behaviour rather than ours. %>
+<% if @issue && !@issue.new_record? &&
+      @issue.project&.module_enabled?(:easy_notes) &&
+      @issue.notes_addable? %>
   <%= stylesheet_link_tag 'easy_notes', plugin: 'redmine_easy_notes' %>
 
   <div id="easy-notes" class="journal" style="display:none;">
