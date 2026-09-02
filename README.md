@@ -36,11 +36,18 @@ One click on the icon, or Shift+Enter, swaps the bar for the full editor:
 | Cancel in the full editor | Discards the note and returns to the one-liner, both boxes empty |
 | Drop a file on the one-liner | Opens the full editor, attaches the file and inserts the inline image markup, exactly as core does |
 | Quote on an existing note | Lands in this editor instead of reopening the issue edit form |
+| Edit on the issue | The bar disappears and its text moves into the edit form's own note box |
 
 Quoting keeps whatever was already being written and appends the quote after it.
 Quoting a private note keeps the reply private. If the issue edit form is already
 open when you click Quote, quoting is left alone: you are editing the issue, so
 the quote stays where you are looking.
+
+There is never a second note box on the page. Core's issue edit form has one of
+its own, so while that form is open the bar stands aside: it disappears, and
+anything being written in it is appended to the edit form's note box, private
+flag included. Cancel brings the bar back empty, because the note went to the
+edit form. Save reloads the page, so it comes back empty either way.
 
 The toggle and the full editor's "Private notes" checkbox are two views of one
 value and stay in sync both ways, so the bar cannot claim a note is public while
@@ -72,8 +79,12 @@ To turn it on everywhere at once:
 
 ```ruby
 # RAILS_ENV=production bin/rails runner
-Project.find_each { |p| p.enabled_module_names |= ['easy_notes'] }
+Project.find_each { |p| p.enable_module!(:easy_notes) unless p.module_enabled?(:easy_notes) }
 ```
+
+Use `enable_module!`, which only appends. Assigning `enabled_module_names=`
+replaces the whole set, so it destroys any row not in the list you pass, and
+that includes modules left behind by plugins you have since uninstalled.
 
 ## Permissions
 

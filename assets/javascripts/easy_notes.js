@@ -174,16 +174,11 @@
     var $corePrivate = $('#issue_private_notes');
     var coreShowAndScrollTo = window.showAndScrollTo;
 
-    // If the user already had core's edit form open, they are editing the issue
-    // and quoting should stay where they are looking. Recorded at click time
-    // because the response script shows #update before showAndScrollTo runs, so
-    // by then it is too late to tell. Stimulus is bound to the link itself and
-    // only starts an async POST, so this delegated handler still sees the
-    // pre-request state.
-    var coreFormWasOpen = false;
-    $(document).on('click', '[data-action*="quote-reply#quote"]', function () {
-      coreFormWasOpen = $coreUpdate.length ? $coreUpdate.is(':visible') : false;
-    });
+    // Whether core's edit form is open. Maintained continuously by the watcher
+    // in the next block, so it is also the answer to "was the form already open
+    // when Quote was clicked".
+    var coreFormVisible = false;
+    var watchSuspended = false;
 
     function adoptQuote(previousNotes, wasPrivate) {
       var written = $coreNotes.val();
@@ -231,16 +226,110 @@
 
     if (typeof coreShowAndScrollTo === 'function' && $coreNotes.length) {
       window.showAndScrollTo = function (id, focus) {
-        if (id === 'add_notes' && !coreFormWasOpen) {
+        // If the edit form was already open the user is editing the issue, so
+        // quoting is left to core and stays where they are looking.
+        if (id === 'add_notes' && !coreFormVisible) {
           var previousNotes = $coreNotes.val();
           var wasPrivate = $corePrivate.length ? $corePrivate.prop('checked') : false;
-          // Hide core's form again in the same tick, so it never paints.
+          // Hide core's form again in the same tick, so it never paints. The
+          // watcher is suspended across this: the response script shows #update
+          // before calling us, and that transient must not be mistaken for the
+          // user opening the editor.
+          watchSuspended = true;
           $coreUpdate.hide();
-          setTimeout(function () { adoptQuote(previousNotes, wasPrivate); }, 0);
+          setTimeout(function () {
+            adoptQuote(previousNotes, wasPrivate);
+            coreFormVisible = $coreUpdate.is(':visible');
+            watchSuspended = false;
+          }, 0);
           return;
         }
         return coreShowAndScrollTo.apply(this, arguments);
       };
+    }
+
+    /* --- standing aside for core's edit form --------------------------------
+       Core's Edit reveals #update, which carries its own notes textarea. Two
+       boxes for the same note on one page is the bug being fixed here, and
+       core's box wins: the bar hides, and whatever was being written in it is
+       handed over.
+
+       Watched with a MutationObserver on #update rather than by hooking the
+       Edit link, the Cancel link and the Save button separately. Both of core's
+       paths toggle it by writing the style attribute -- showAndScrollTo sets
+       el.style.display = '' and Cancel's inline onclick calls
+       $('#update').hide() -- so one observer covers every route in and out,
+       including any core adds later.
+
+       The callback compares current visibility against the last known value
+       rather than replaying each mutation, so a show-then-hide inside a single
+       task coalesces to no change. That matters because the quote response
+       does exactly that; the explicit suspend flag above makes it deterministic
+       instead of relying on it. */
+
+    function yieldToCoreForm() {
+      // The visible editor owns the text, per the one-note model above.
+      var ours = $full.is(':visible') ? $textarea.val() : $input.val();
+
+      if ($.trim(ours).length && $coreNotes.length) {
+        var theirs = $coreNotes.val();
+        $coreNotes.val(
+          $.trim(theirs).length ? theirs.replace(/\s*$/, '') + '\n\n' + ours : ours
+        );
+      }
+
+      // The private intent travels with the note, so moving to the edit form
+      // cannot quietly turn a private note public.
+      if (isPrivate() && $corePrivate.length) {
+        $corePrivate.prop('checked', true);
+      }
+
+      $textarea.val('');
+      $input.val('');
+      $full.hide();
+      $mini.show();
+      syncMiniSubmit();
+      $wrap.hide();
+    }
+
+    function reclaimFromCoreForm() {
+      // Comes back empty: the note in progress was handed over, and Save
+      // reloads the page anyway. Only Cancel reaches here with the bar to
+      // restore.
+      $textarea.val('');
+      $input.val('');
+      $full.hide();
+      $mini.show();
+      syncMiniSubmit();
+      $wrap.show();
+    }
+
+    function syncCoreFormState() {
+      var nowVisible = $coreUpdate.length ? $coreUpdate.is(':visible') : false;
+      if (nowVisible === coreFormVisible) { return; }
+
+      coreFormVisible = nowVisible;
+      if (nowVisible) {
+        yieldToCoreForm();
+      } else {
+        reclaimFromCoreForm();
+      }
+    }
+
+    if ($coreUpdate.length) {
+      // #update is rendered hidden on issues/show, but do not assume it.
+      coreFormVisible = $coreUpdate.is(':visible');
+      if (coreFormVisible) { yieldToCoreForm(); }
+
+      if (window.MutationObserver) {
+        new MutationObserver(function () {
+          if (watchSuspended) { return; }
+          syncCoreFormState();
+        }).observe($coreUpdate.get(0), {
+          attributes: true,
+          attributeFilter: ['style', 'class']
+        });
+      }
     }
 
     /* Enter in the one-liner submits. The button lives outside the form (it uses
